@@ -1,0 +1,25 @@
+# SCION-IP Gateway (SIG) Configuration — endhost-as35
+# ISD-AS: 18-ffaa:1:35 (ISD3, AS5)
+
+[gateway]
+  id = "sig"
+  traffic_policy_file = "/etc/scion/sig/traffic.json"
+  ip_routing_policy_file = "/etc/scion/sig/routing.policy"
+  ctrl_addr = "10.100.0.135:31100"
+  data_addr = "10.100.0.135:31101"
+  probe_addr = "10.100.0.135:31102"
+
+[sciond_connection]
+  address = "127.0.0.1:30255"
+
+[tunnel]
+  name = "sig"
+
+[log.console]
+  level = "debug"
+
+[metrics]
+  # Bind 0.0.0.0 (no 127.0.0.1) para que Prometheus pueda hacer scrape por la IP
+  # de transit_net (10.100.0.135:30456). Solo afecta al socket de métricas, no a
+  # ctrl/data/probe de la sesión SIG. Verificación en ADR-0001 §11.
+  prometheus = "0.0.0.0:30456"

@@ -1,0 +1,84 @@
+hosts:
+  - name: scion11
+    address: 10.100.0.11
+    isd: 16
+    as: 11
+  - name: scion12
+    address: 10.100.0.12
+    isd: 16
+    as: 12
+  - name: scion13
+    address: 10.100.0.13
+    isd: 16
+    as: 13
+  - name: scion14
+    address: 10.100.0.14
+    isd: 16
+    as: 14
+  - name: scion15
+    address: 10.100.0.15
+    isd: 16
+    as: 15
+  - name: scion21
+    address: 10.100.0.21
+    isd: 17
+    as: 21
+  - name: scion22
+    address: 10.100.0.22
+    isd: 17
+    as: 22
+  - name: scion23
+    address: 10.100.0.23
+    isd: 17
+    as: 23
+  - name: scion24
+    address: 10.100.0.24
+    isd: 17
+    as: 24
+  - name: scion25
+    address: 10.100.0.25
+    isd: 17
+    as: 25
+  - name: scion31
+    address: 10.100.0.31
+    isd: 18
+    as: 31
+  - name: scion32
+    address: 10.100.0.32
+    isd: 18
+    as: 32
+  - name: scion33
+    address: 10.100.0.33
+    isd: 18
+    as: 33
+  - name: scion34
+    address: 10.100.0.34
+    isd: 18
+    as: 34
+  - name: scion35
+    address: 10.100.0.35
+    isd: 18
+    as: 35
+  - name: scion41
+    address: 10.100.0.41
+    isd: 19
+    as: 41
+  - name: scion42
+    address: 10.100.0.42
+    isd: 19
+    as: 42
+  - name: scion43
+    address: 10.100.0.43
+    isd: 19
+    as: 43
+  - name: scion44
+    address: 10.100.0.44
+    isd: 19
+    as: 44
+  - name: scion45
+    address: 10.100.0.45
+    isd: 19
+    as: 45
+
+default_port: 8080
+default_sciond_address: 127.0.0.1

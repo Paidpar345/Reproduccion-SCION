@@ -1,0 +1,14 @@
+[Unit]
+Description=CyberFlood IP Forwarding and NAT Setup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cyberflood-forwarding.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+{
+	# HTTP/3 fuera de alcance a proposito: el tooling del banco (CyberFlood, y el
+	# curl/h2load de Debian) no lo ejercita de forma fiable, y QUIC/UDP por el SIG
+	# es fragil (datagrama > MTU del tunel se descarta sin reensamblado). Solo h1 + h2.
+	servers {
+		protocols h1 h2
+	}
+	auto_https disable_redirects
+}
+
+# HTTP/2 + HTTP/1.1 SOBRE TLS (cert self-signed via CA interna de Caddy; incluye SAN=IP).
+# Este es el endpoint que mide CyberFlood en modo HTTP/2 (h2 = ALPN sobre TLS).
+https://10.30.5.200:443, https://192.168.1.11:443 {
+	tls internal
+	root * /srv/objects
+	file_server browse
+	# SIN compresion a proposito: los objetos son aleatorios (incompresibles) para
+	# medir ancho de banda real; comprimir falsearia el throughput.
+}
+
+# HTTP/1.1 en claro (linea base / curl simple). Mismo contenido.
+http://10.30.5.200:80, http://192.168.1.11:80 {
+	root * /srv/objects
+	file_server browse
+}

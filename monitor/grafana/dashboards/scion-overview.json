@@ -1,0 +1,55 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "SIG — sesiones healthy (1 = sana)",
+      "description": "gateway_session_is_healthy por par de AS. Comprobado en ADR-0001 §11.",
+      "datasource": { "type": "prometheus", "uid": "scion-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "scion-prometheus" }, "expr": "gateway_session_is_healthy", "legendFormat": "{{isd_as}} -> {{remote_isd_as}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Beaconing propagado (rate 1m)",
+      "description": "Ritmo de propagación de beacons por nodo. Ajusta el nombre exacto del contador si difiere en tu build.",
+      "datasource": { "type": "prometheus", "uid": "scion-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "scion-prometheus" }, "expr": "sum by (instance) (rate(control_beaconing_propagated_beacons_total[1m]))", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Interfaces de Border Router activas",
+      "description": "router_interface_up (1 = arriba) por interfaz y nodo.",
+      "datasource": { "type": "prometheus", "uid": "scion-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "scion-prometheus" }, "expr": "router_interface_up", "legendFormat": "{{instance}} if{{interface}}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["scion", "testbed"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timezone": "",
+  "title": "SCION Testbed — Overview",
+  "uid": "scion-overview",
+  "version": 1,
+  "refresh": "10s"
+}

@@ -1,0 +1,591 @@
+name: "SCION Testbed"
+
+services:
+  monitor:
+    image: monitor:1.0
+    container_name: monitor
+    hostname: monitor
+    privileged: true
+    ports:
+      - "8080:8080"
+    networks:
+      transit_net:
+        ipv4_address: 10.100.0.100
+    volumes:
+      - ./captures:/data
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    ports:
+      - "9090:9090"
+    networks:
+      transit_net:
+        ipv4_address: 10.100.0.101
+    volumes:
+      - ./monitor/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    hostname: grafana
+    restart: unless-stopped
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    networks:
+      transit_net:
+        ipv4_address: 10.100.0.102
+    volumes:
+      - ./monitor/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitor/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  endhost-as15:
+    container_name: endhost-as15
+    image: endhost-as15:1.0
+    hostname: endhost-as15
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+    networks:
+      as_net_15:
+        ipv4_address: 10.10.5.200
+      transit_net:
+        ipv4_address: 10.100.0.115
+      cyberflood_net_a:                 # subred A / VLAN 10
+        ipv4_address: 192.168.0.10
+    depends_on:
+      - scion15
+
+  endhost-as35:
+    container_name: endhost-as35
+    image: endhost-as35:1.0
+    hostname: endhost-as35
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+    networks:
+      as_net_35:
+        ipv4_address: 10.30.5.200
+      transit_net:
+        ipv4_address: 10.100.0.135
+      # endhost-as35 va en la SUBRED B / VLAN 20 (cyberflood_net_b). Separar A y B en VLANs
+      # distintas (dominios de broadcast distintos) es lo que impide que CyberFlood haga
+      # atajo entre su boca cliente y su boca servidor: el unico camino A<->B es
+      # as15 -> SIG -> SCION -> as35. (Con una L2 plana, aunque fueran /24 distintos, CF se
+      # contestaba a si mismo sin cruzar el SIG.) Ver docs/adr/0001-inyeccion-cyberflood-sig.md.
+      cyberflood_net_b:
+        ipv4_address: 192.168.1.11
+    depends_on:
+      - scion35
+
+  # Generador de carga HTTP cliente-solo (Via C): vive en la SUBRED A (192.168.0.50) y
+  # mide ancho de banda contra el Caddy de as35 (192.168.1.11, subred B). Como son /24
+  # distintos, enruta por su gateway as15 (.0.10) -> SIG -> SCION. Sustituye a CyberFlood,
+  # que en closed-loop se contesta a si mismo y NO cruza el SIG. Ver tools/loadgen/README.md.
+  loadgen:
+    container_name: loadgen
+    build: ./tools/loadgen
+    cap_add:
+      - NET_ADMIN
+    networks:
+      cyberflood_net_a:                 # subred A / VLAN 10 (opcional, complementa a CyberFlood)
+        ipv4_address: 192.168.0.50
+    depends_on:
+      - endhost-as15
+
+  endhost-as25:
+    container_name: endhost-as25
+    image: endhost-as25:1.0
+    hostname: endhost-as25
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+    networks:
+      as_net_25:
+        ipv4_address: 10.20.5.200
+      transit_net:
+        ipv4_address: 10.100.0.125
+    depends_on:
+      - scion25
+
+  endhost-as45:
+    container_name: endhost-as45
+    image: endhost-as45:1.0
+    hostname: endhost-as45
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+    networks:
+      as_net_45:
+        ipv4_address: 10.40.5.200
+      transit_net:
+        ipv4_address: 10.100.0.145
+    depends_on:
+      - scion45
+
+  scion11:
+    image: scion11:1.0
+    container_name: scion11
+    hostname: scion11
+    privileged: true
+    networks:
+      as_net_11: {}
+      transit_net:
+        ipv4_address: 10.100.0.11
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion12:
+    image: scion12:1.0
+    container_name: scion12
+    hostname: scion12
+    privileged: true
+    networks:
+      as_net_12: {}
+      transit_net:
+        ipv4_address: 10.100.0.12
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion13:
+    image: scion13:1.0
+    container_name: scion13
+    hostname: scion13
+    privileged: true
+    networks:
+      as_net_13: {}
+      transit_net:
+        ipv4_address: 10.100.0.13
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion14:
+    image: scion14:1.0
+    container_name: scion14
+    hostname: scion14
+    privileged: true
+    networks:
+      as_net_14: {}
+      transit_net:
+        ipv4_address: 10.100.0.14
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion15:
+    image: scion15:1.0
+    container_name: scion15
+    hostname: scion15
+    privileged: true
+    networks:
+      as_net_15:
+        ipv4_address: 10.10.5.100
+      transit_net:
+        ipv4_address: 10.100.0.15
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion21:
+    image: scion21:1.0
+    container_name: scion21
+    hostname: scion21
+    privileged: true
+    networks:
+      as_net_21: {}
+      transit_net:
+        ipv4_address: 10.100.0.21
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion22:
+    image: scion22:1.0
+    container_name: scion22
+    hostname: scion22
+    privileged: true
+    networks:
+      as_net_22: {}
+      transit_net:
+        ipv4_address: 10.100.0.22
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion23:
+    image: scion23:1.0
+    container_name: scion23
+    hostname: scion23
+    privileged: true
+    networks:
+      as_net_23: {}
+      transit_net:
+        ipv4_address: 10.100.0.23
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion24:
+    image: scion24:1.0
+    container_name: scion24
+    hostname: scion24
+    privileged: true
+    networks:
+      as_net_24: {}
+      transit_net:
+        ipv4_address: 10.100.0.24
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion25:
+    image: scion25:1.0
+    container_name: scion25
+    hostname: scion25
+    privileged: true
+    networks:
+      as_net_25: {}
+      transit_net:
+        ipv4_address: 10.100.0.25
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion31:
+    image: scion31:1.0
+    container_name: scion31
+    hostname: scion31
+    privileged: true
+    networks:
+      as_net_31: {}
+      transit_net:
+        ipv4_address: 10.100.0.31
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion32:
+    image: scion32:1.0
+    container_name: scion32
+    hostname: scion32
+    privileged: true
+    networks:
+      as_net_32: {}
+      transit_net:
+        ipv4_address: 10.100.0.32
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion33:
+    image: scion33:1.0
+    container_name: scion33
+    hostname: scion33
+    privileged: true
+    networks:
+      as_net_33: {}
+      transit_net:
+        ipv4_address: 10.100.0.33
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion34:
+    image: scion34:1.0
+    container_name: scion34
+    hostname: scion34
+    privileged: true
+    networks:
+      as_net_34: {}
+      transit_net:
+        ipv4_address: 10.100.0.34
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion35:
+    image: scion35:1.0
+    container_name: scion35
+    hostname: scion35
+    privileged: true
+    networks:
+      as_net_35: {}
+      transit_net:
+        ipv4_address: 10.100.0.35
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion41:
+    image: scion41:1.0
+    container_name: scion41
+    hostname: scion41
+    privileged: true
+    networks:
+      as_net_41: {}
+      transit_net:
+        ipv4_address: 10.100.0.41
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion42:
+    image: scion42:1.0
+    container_name: scion42
+    hostname: scion42
+    privileged: true
+    networks:
+      as_net_42: {}
+      transit_net:
+        ipv4_address: 10.100.0.42
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion43:
+    image: scion43:1.0
+    container_name: scion43
+    hostname: scion43
+    privileged: true
+    networks:
+      as_net_43: {}
+      transit_net:
+        ipv4_address: 10.100.0.43
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion44:
+    image: scion44:1.0
+    container_name: scion44
+    hostname: scion44
+    privileged: true
+    networks:
+      as_net_44: {}
+      transit_net:
+        ipv4_address: 10.100.0.44
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+  scion45:
+    image: scion45:1.0
+    container_name: scion45
+    hostname: scion45
+    privileged: true
+    networks:
+      as_net_45: {}
+      transit_net:
+        ipv4_address: 10.100.0.45
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /home/shared:/shared
+    tmpfs:
+      - /run
+      - /run/lock
+
+networks:
+  as_net_11:
+    ipam:
+      config:
+        - subnet: 10.10.1.0/24
+  as_net_12:
+    ipam:
+      config:
+        - subnet: 10.10.2.0/24
+  as_net_13:
+    ipam:
+      config:
+        - subnet: 10.10.3.0/24
+  as_net_14:
+    ipam:
+      config:
+        - subnet: 10.10.4.0/24
+  as_net_15:
+    ipam:
+      config:
+        - subnet: 10.10.5.0/24
+
+  as_net_21:
+    ipam:
+      config:
+        - subnet: 10.20.1.0/24
+  as_net_22:
+    ipam:
+      config:
+        - subnet: 10.20.2.0/24
+  as_net_23:
+    ipam:
+      config:
+        - subnet: 10.20.3.0/24
+  as_net_24:
+    ipam:
+      config:
+        - subnet: 10.20.4.0/24
+  as_net_25:
+    ipam:
+      config:
+        - subnet: 10.20.5.0/24
+
+  as_net_31:
+    ipam:
+      config:
+        - subnet: 10.30.1.0/24
+  as_net_32:
+    ipam:
+      config:
+        - subnet: 10.30.2.0/24
+  as_net_33:
+    ipam:
+      config:
+        - subnet: 10.30.3.0/24
+  as_net_34:
+    ipam:
+      config:
+        - subnet: 10.30.4.0/24
+  as_net_35:
+    ipam:
+      config:
+        - subnet: 10.30.5.0/24
+
+  as_net_41:
+    ipam:
+      config:
+        - subnet: 10.40.1.0/24
+  as_net_42:
+    ipam:
+      config:
+        - subnet: 10.40.2.0/24
+  as_net_43:
+    ipam:
+      config:
+        - subnet: 10.40.3.0/24
+  as_net_44:
+    ipam:
+      config:
+        - subnet: 10.40.4.0/24
+  as_net_45:
+    ipam:
+      config:
+        - subnet: 10.40.5.0/24
+
+  transit_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+  # DOS redes macvlan sobre DOS NICs separadas (ens19 = VLAN 10 / subred A, ens20 = VLAN 20 /
+  # subred B), cada una en su propio bridge/VLAN = su propio dominio de broadcast L2; asi
+  # CyberFlood (que emula cliente Y servidor) NO puede hacer atajo entre sus puertos: el unico
+  # camino A<->B es as15 -> SIG -> SCION -> as35. REQUIERE en Proxmox: ens19 y ens20 del VM
+  # SCION en bridges/VLAN distintos, y las bocas (VR) de CyberFlood en esas mismas VLAN.
+  # Ver docs/adr/0001-inyeccion-cyberflood-sig.md.
+  cyberflood_net_a:                 # ens19 / VLAN 10 — subred A (cliente + as15)
+    driver: macvlan
+    driver_opts:
+      parent: ens19
+    ipam:
+      config:
+        - subnet: 192.168.0.0/24
+          gateway: 192.168.0.1
+  cyberflood_net_b:                 # ens20 / VLAN 20 — subred B (servidor + as35)
+    driver: macvlan
+    driver_opts:
+      parent: ens20
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+
+volumes:
+  promdata:
+  grafanadata:

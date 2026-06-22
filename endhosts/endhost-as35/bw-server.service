@@ -1,0 +1,20 @@
+[Unit]
+Description=Servidor HTTP de carga (Caddy h1/h2 sobre TLS) para pruebas de ancho de banda por SCION/SIG
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Espera a que la IP de servicio (10.30.5.200, red de AS) este asignada antes de
+# arrancar -> evita que Caddy falle el bind si la interfaz aun no tiene la IP.
+ExecStartPre=/bin/bash -c 'until ip -4 addr show | grep -q "10.30.5.200"; do sleep 1; done'
+ExecStartPre=/bin/bash -c 'until ip -4 addr show | grep -q "192.168.1.11"; do sleep 1; done'
+# Genera/verifica los objetos de prueba en runtime (no horneados en la imagen).
+ExecStartPre=/usr/local/bin/make-objects.sh
+ExecStart=/usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

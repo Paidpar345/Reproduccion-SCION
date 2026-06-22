@@ -1,0 +1,84 @@
+# Prometheus scrape config para el banco de pruebas SCION.
+#
+# Cada contenedor scion<XY> ejecuta DOS servicios con /metrics propio:
+#   - Control Service (CS): 0.0.0.0:30452   (base/cs.toml)
+#   - Border Router (BR):   0.0.0.0:30442   (base/br.toml)
+# Ambos enlazan a 0.0.0.0, así que son accesibles por su IP de transit_net.
+#
+# Los dos SIG (endhost-as15, endhost-as35) exponen métricas de gateway en :30456.
+# Su bind se cambió de 127.0.0.1 a 0.0.0.0 (endhosts/endhost-as{15,35}/sig.toml)
+# para que Prometheus pueda alcanzarlos por la IP de transit_net (.115 / .135).
+#
+# Para etiquetas por nodo (node/isd/as) regenera este fichero con:
+#   python monitor/prometheus/gen-prometheus.py > monitor/prometheus/prometheus.yml
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: scion-cs
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 10.100.0.11:30452
+          - 10.100.0.12:30452
+          - 10.100.0.13:30452
+          - 10.100.0.14:30452
+          - 10.100.0.15:30452
+          - 10.100.0.21:30452
+          - 10.100.0.22:30452
+          - 10.100.0.23:30452
+          - 10.100.0.24:30452
+          - 10.100.0.25:30452
+          - 10.100.0.31:30452
+          - 10.100.0.32:30452
+          - 10.100.0.33:30452
+          - 10.100.0.34:30452
+          - 10.100.0.35:30452
+          - 10.100.0.41:30452
+          - 10.100.0.42:30452
+          - 10.100.0.43:30452
+          - 10.100.0.44:30452
+          - 10.100.0.45:30452
+        labels:
+          role: control
+
+  - job_name: scion-br
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 10.100.0.11:30442
+          - 10.100.0.12:30442
+          - 10.100.0.13:30442
+          - 10.100.0.14:30442
+          - 10.100.0.15:30442
+          - 10.100.0.21:30442
+          - 10.100.0.22:30442
+          - 10.100.0.23:30442
+          - 10.100.0.24:30442
+          - 10.100.0.25:30442
+          - 10.100.0.31:30442
+          - 10.100.0.32:30442
+          - 10.100.0.33:30442
+          - 10.100.0.34:30442
+          - 10.100.0.35:30442
+          - 10.100.0.41:30442
+          - 10.100.0.42:30442
+          - 10.100.0.43:30442
+          - 10.100.0.44:30442
+          - 10.100.0.45:30442
+        labels:
+          role: border-router
+
+  - job_name: scion-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 10.100.0.115:30456
+          - 10.100.0.135:30456
+        labels:
+          role: gateway
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

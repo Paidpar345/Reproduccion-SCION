@@ -1,0 +1,20 @@
+[Unit]
+Description=SCION-IP Gateway (SIG)
+After=scion-daemon.service
+Requires=scion-daemon.service
+
+[Service]
+Type=simple
+TimeoutStartSec=0
+ExecStartPre=/bin/bash -c '\
+  until scion showpaths 16-ffaa:1:15 --sciond 127.0.0.1:30255 2>/dev/null \
+        | grep -q "Status: alive"; \
+  do echo "Waiting for SCION paths to 16-ffaa:1:15..."; sleep 3; done'
+ExecStart=/usr/bin/scion-ip-gateway --config /etc/scion/sig/sig.toml
+# Run route setup in background — failure must NOT kill the gateway process
+ExecStartPost=/bin/bash -c '/usr/local/bin/sig-routes.sh &'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
